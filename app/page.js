@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { name: '', description: '', price: '' };
+const emptyForm = {
+  name: '',
+  description: '',
+  price: '',
+  category_id: '',
+};
 
 export default function Home() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,10 +21,15 @@ export default function Home() {
   async function loadProducts() {
     setLoading(true);
     setError('');
+
     try {
       const res = await fetch('/api/products');
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal memuat data');
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal memuat data');
+      }
+
       setProducts(data);
     } catch (err) {
       setError(err.message);
@@ -27,21 +38,45 @@ export default function Home() {
     }
   }
 
+  async function loadCategories() {
+    try {
+      const res = await fetch('/api/categories');
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal memuat kategori');
+      }
+
+      setCategories(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }
 
   function startEdit(product) {
     setEditingId(product.id);
+
     setForm({
       name: product.name,
       description: product.description || '',
       price: product.price,
+      category_id: product.category_id
+        ? String(product.category_id)
+        : '',
     });
   }
 
@@ -54,21 +89,37 @@ export default function Home() {
     e.preventDefault();
     setSaving(true);
     setError('');
+
     try {
-      const url = editingId ? `/api/products/${editingId}` : '/api/products';
+      const url = editingId
+        ? `/api/products/${editingId}`
+        : '/api/products';
+
       const method = editingId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...form,
+          price: Number(form.price),
+          category_id: form.category_id
+            ? Number(form.category_id)
+            : null,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan data');
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal menyimpan data');
+      }
 
       setForm(emptyForm);
       setEditingId(null);
+
       await loadProducts();
     } catch (err) {
       setError(err.message);
@@ -78,12 +129,23 @@ export default function Home() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Yakin ingin menghapus produk ini?')) return;
+    if (!confirm('Yakin ingin menghapus produk ini?')) {
+      return;
+    }
+
     setError('');
+
     try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal menghapus data');
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal menghapus data');
+      }
+
       await loadProducts();
     } catch (err) {
       setError(err.message);
@@ -99,6 +161,7 @@ export default function Home() {
 
       <div className="card">
         <h3>{editingId ? 'Edit Produk' : 'Tambah Produk Baru'}</h3>
+
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <label htmlFor="name">Nama Produk</label>
@@ -110,6 +173,25 @@ export default function Home() {
               placeholder="Misal: Kopi Susu"
               required
             />
+          </div>
+
+          <div className="form-row">
+            <label htmlFor="category_id">Kategori</label>
+            <select
+              id="category_id"
+              name="category_id"
+              value={form.category_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Pilih Kategori</option>
+
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-row">
@@ -140,11 +222,24 @@ export default function Home() {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? 'Menyimpan...' : editingId ? 'Update' : 'Simpan'}
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={saving}
+            >
+              {saving
+                ? 'Menyimpan...'
+                : editingId
+                ? 'Update'
+                : 'Simpan'}
             </button>
+
             {editingId && (
-              <button type="button" className="btn-secondary" onClick={cancelEdit}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={cancelEdit}
+              >
                 Batal
               </button>
             )}
@@ -153,29 +248,45 @@ export default function Home() {
       </div>
 
       <div className="status">
-        {loading ? 'Memuat data...' : `${products.length} produk ditemukan`}
+        {loading
+          ? 'Memuat data...'
+          : `${products.length} produk ditemukan`}
       </div>
 
       <table>
         <thead>
           <tr>
             <th>Nama</th>
+            <th>Kategori</th>
             <th>Deskripsi</th>
             <th>Harga</th>
             <th>Aksi</th>
           </tr>
         </thead>
+
         <tbody>
           {products.map((p) => (
             <tr key={p.id}>
               <td>{p.name}</td>
-              <td>{p.description}</td>
-              <td>Rp {Number(p.price).toLocaleString('id-ID')}</td>
+              <td>{p.category_name || 'Tanpa kategori'}</td>
+              <td>{p.description || '-'}</td>
               <td>
-                <button className="btn-edit" onClick={() => startEdit(p)}>
+                Rp {Number(p.price).toLocaleString('id-ID')}
+              </td>
+              <td>
+                <button
+                  className="btn-edit"
+                  onClick={() => startEdit(p)}
+                  type="button"
+                >
                   Edit
                 </button>
-                <button className="btn-danger" onClick={() => handleDelete(p.id)}>
+
+                <button
+                  className="btn-danger"
+                  onClick={() => handleDelete(p.id)}
+                  type="button"
+                >
                   Hapus
                 </button>
               </td>
@@ -185,7 +296,9 @@ export default function Home() {
       </table>
 
       {!loading && products.length === 0 && (
-        <div className="empty">Belum ada produk. Tambahkan produk pertama di atas.</div>
+        <div className="empty">
+          Belum ada produk. Tambahkan produk pertama di atas.
+        </div>
       )}
     </main>
   );

@@ -48,12 +48,23 @@ h1 {
 }
 
 .form-row input,
-.form-row textarea {
+.form-row textarea,
+.form-row select {
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
   font-family: inherit;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.form-row input:focus,
+.form-row textarea:focus,
+.form-row select:focus {
+  outline: none;
+  border-color: #2563eb;
 }
 
 .form-actions {
@@ -69,6 +80,11 @@ button {
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -120,7 +136,8 @@ table {
   background: #fff;
 }
 
-th, td {
+th,
+td {
   text-align: left;
   padding: 10px 12px;
   border-bottom: 1px solid #eee;
@@ -154,4 +171,20 @@ th {
   font-size: 13px;
   color: #666;
   margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 24px 12px 40px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }

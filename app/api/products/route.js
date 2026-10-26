@@ -5,13 +5,29 @@ import { getPool } from '@/lib/db';
 export async function GET() {
   try {
     const pool = getPool();
+
     const [rows] = await pool.query(
-      'SELECT id, name, description, price, created_at FROM products ORDER BY id DESC'
+      `SELECT 
+        products.id,
+        products.name,
+        products.description,
+        products.price,
+        products.category_id,
+        categories.name AS category_name,
+        products.created_at
+      FROM products
+      LEFT JOIN categories
+        ON products.category_id = categories.id
+      ORDER BY products.id DESC`
     );
+
     return NextResponse.json(rows);
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
 
@@ -19,7 +35,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, description, price } = body;
+    const { name, description, price, category_id } = body;
 
     if (!name || price === undefined || price === '') {
       return NextResponse.json(
@@ -29,17 +45,34 @@ export async function POST(request) {
     }
 
     const pool = getPool();
+
     const [result] = await pool.query(
-      'INSERT INTO products (name, description, price) VALUES (?, ?, ?)',
-      [name, description || null, price]
+      `INSERT INTO products
+        (name, description, price, category_id)
+       VALUES (?, ?, ?, ?)`,
+      [
+        name,
+        description || null,
+        price,
+        category_id ? Number(category_id) : null
+      ]
     );
 
     return NextResponse.json(
-      { id: result.insertId, name, description, price },
+      {
+        id: result.insertId,
+        name,
+        description,
+        price,
+        category_id: category_id ? Number(category_id) : null
+      },
       { status: 201 }
     );
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
